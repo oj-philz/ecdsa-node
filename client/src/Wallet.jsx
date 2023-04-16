@@ -22,7 +22,7 @@ function Wallet({ address, setAddress, balance, setBalance }) {
         Wallet Address
         <input placeholder="Type an address, for example: 0x1" value={address} onChange={onChange}></input>
       </label>
-
+      <div>Address: {address.slice(0,5)}...{address.slice(14,20)}</div>
       <div className="balance">Balance: {balance}</div>
     </div>
   );

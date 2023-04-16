@@ -1,5 +1,6 @@
 import { useState } from "react";
 import server from "./server";
+import {sign, hash} from "./hash.cjs";
 
 function Transfer({ address, setBalance }) {
   const [sendAmount, setSendAmount] = useState("");
@@ -10,6 +11,15 @@ function Transfer({ address, setBalance }) {
   async function transfer(evt) {
     evt.preventDefault();
 
+    const tx = {
+      sender: address,
+      amount: parseInt(sendAmount),
+      recipient,
+    }
+
+    const msgHash = hash(JSON.stringify(tx));
+    const [signature, recoveryBit] = sign(JSON.stringify(tx));
+
     try {
       const {
         data: { balance },
@@ -17,6 +27,9 @@ function Transfer({ address, setBalance }) {
         sender: address,
         amount: parseInt(sendAmount),
         recipient,
+        msgHash,
+        signature,
+        recoveryBit,
       });
       setBalance(balance);
     } catch (ex) {
@@ -27,7 +40,7 @@ function Transfer({ address, setBalance }) {
   return (
     <form className="container transfer" onSubmit={transfer}>
       <h1>Send Transaction</h1>
-
+      <h3>Sender: {address.slice(0,5)}...{address.slice(14,20)}</h3>
       <label>
         Send Amount
         <input

@@ -2,14 +2,18 @@ const express = require("express");
 const app = express();
 const cors = require("cors");
 const port = 3042;
+const generateKey = require("./scripts/generate.cjs");
+const secp = require("ethereum-cryptography/secp256k1");
 
 app.use(cors());
 app.use(express.json());
 
+let keys = generateKey();
+
 const balances = {
-  "0x1": 100,
-  "0x2": 50,
-  "0x3": 75,
+  [keys[0].slice(-20)]: 100,
+  [keys[1].slice(-20)]: 50,
+  [keys[2].slice(-20)]: 75,
 };
 
 app.get("/balance/:address", (req, res) => {
@@ -19,10 +23,25 @@ app.get("/balance/:address", (req, res) => {
 });
 
 app.post("/send", (req, res) => {
-  const { sender, recipient, amount } = req.body;
+  const { sender, recipient, amount, msgHash, signature, recoveryBit } = req.body;
 
   setInitialBalance(sender);
   setInitialBalance(recipient);
+
+  const receiver = recipient === keys[0].slice(-20) || keys[1].slice(-20) || keys[2].slice(-20);
+  const msg = new Uint8Array(Object.values(msgHash));
+  const sign = new Uint8Array(Object.values(signature));
+
+  const pubKey = secp.recoverPublicKey(msg, sign, recoveryBit);
+  const isVerified = secp.verify(sign, msg, pubKey);
+
+  if (!receiver) {
+    res.status(400).send({message: "invalid recipient"});
+  }
+
+  if (!isVerified) {
+    res.status(400).send({message: "message verification failed"});
+  }
 
   if (balances[sender] < amount) {
     res.status(400).send({ message: "Not enough funds!" });
@@ -42,3 +61,4 @@ function setInitialBalance(address) {
     balances[address] = 0;
   }
 }
+console.log(keys[0].slice(-20), keys[1].slice(-20), keys[2].slice(-20));
