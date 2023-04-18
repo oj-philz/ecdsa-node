@@ -23,32 +23,32 @@ app.get("/balance/:address", (req, res) => {
 });
 
 app.post("/send", (req, res) => {
-  const { sender, recipient, amount, msgHash, signature, recoveryBit } = req.body;
+  const { tx, msgHash, signature } = req.body;
 
-  setInitialBalance(sender);
-  setInitialBalance(recipient);
+  setInitialBalance(tx.sender);
+  setInitialBalance(tx.recipient);
 
-  const receiver = recipient === keys[0].slice(-20) || keys[1].slice(-20) || keys[2].slice(-20);
-  const msg = new Uint8Array(Object.values(msgHash));
-  const sign = new Uint8Array(Object.values(signature));
+  const [sign, recoveryBit] = Uint8Array.from(Object.values(signature));
 
-  const pubKey = secp.recoverPublicKey(msg, sign, recoveryBit);
-  const isVerified = secp.verify(sign, msg, pubKey);
-
-  if (!receiver) {
-    res.status(400).send({message: "invalid recipient"});
+  //let pubKey = secp.recoverPublicKey(msgHash, signature, 0);
+  //let addressFromPubKey = pubKey.slice(1).slice(-20);
+  console.log(req.body, sign, recoveryBit);
+  if (msgHash === undefined) {
+    res.status(400).send({ message: "empty hash"});
   }
 
-  if (!isVerified) {
-    res.status(400).send({message: "message verification failed"});
-  }
+  /*let addresses = Object.keys(balances);
+  for (let i=0; i<addresses.length; i++) {
+    if (addressFromPubKey.toString() === addresses[i].toString()) continue;
+    res.status(400).send({ message: "invalid sender address"});
+  }*/
 
-  if (balances[sender] < amount) {
-    res.status(400).send({ message: "Not enough funds!" });
+  if (balances[tx.sender] < tx.amount && tx.amount < 0) {
+    res.status(400).send({ message: "Not enough funds! or Invalid amount" });
   } else {
-    balances[sender] -= amount;
-    balances[recipient] += amount;
-    res.send({ balance: balances[sender] });
+    balances[tx.sender] -= tx.amount;
+    balances[tx.recipient] += tx.amount;
+    res.send({ balance: balances[tx.sender] });
   }
 });
 
