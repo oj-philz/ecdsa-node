@@ -1,31 +1,47 @@
 import { useState } from "react";
 import server from "./server";
 //import util from "./util";
-import {toHex, utf8ToBytes, hexToBytes} from "ethereum-cryptography/utils";
+import { toHex, utf8ToBytes, hexToBytes } from "ethereum-cryptography/utils";
 import { keccak256 } from "ethereum-cryptography/keccak";
 import * as secp from "ethereum-cryptography/secp256k1";
 
-
-const privateKeys = ["6df810393dc8c466872d901e727b3819bf82613a702bba705e87c12600dc3df5", 
-    "5bbbcf9c5da2fee9fd48d97d68795df2581e85c5c0a4d83c1618e1e007052182", 
-    "835b4c017a15c05cf56250c881c1e13583d40622bd3ab92c600ed662d25c36ef"
-  ]
+const privateKeys = [
+  "6df810393dc8c466872d901e727b3819bf82613a702bba705e87c12600dc3df5",
+  "5bbbcf9c5da2fee9fd48d97d68795df2581e85c5c0a4d83c1618e1e007052182",
+  "835b4c017a15c05cf56250c881c1e13583d40622bd3ab92c600ed662d25c36ef",
+];
 
 function hashMessage(message) {
-    return keccak256(utf8ToBytes(message));
+  return keccak256(utf8ToBytes(message));
 }
 
 async function signTx(address, data) {
-    let signatures = [];
-    for (let i=0; i<privateKeys.length; i++) {
-        let pubKey = secp.getPublicKey(privateKeys[i].slice(1).slice(-20));
-        if (address.toString === toHex(pubKey).toString()) {
-            return signatures.push(await secp.sign(toHex(data), hexToBytes(privateKeys[i]), {recovered: true}));
-        }
-    }
-    return signatures;
-}
+  let signatures = [];
+  for (let i = 0; i < privateKeys.length; i++) {
+    // console.log(privateKeys[i].slice(1).slice(-20));
+    let pubKey = secp.getPublicKey(privateKeys[i]);
 
+    const pubKeySlice = toHex(pubKey).toString().substr(-20);
+
+    // console.log("Public Key Slice: ", pubKeySlice);
+    // console.log("Address: ", address);
+
+    if (address.toString() === pubKeySlice) {
+      const signature = await secp.sign(
+        toHex(data),
+        hexToBytes(privateKeys[i]),
+        {
+          recovered: true,
+        }
+      );
+
+      // console.log({ signature });
+      return signature;
+    }
+  }
+
+  // return signatures;
+}
 
 function Transfer({ address, setBalance }) {
   const [sendAmount, setSendAmount] = useState("");
@@ -40,10 +56,12 @@ function Transfer({ address, setBalance }) {
       sender: address,
       amount: parseInt(sendAmount),
       recipient,
-    }
+    };
 
     const Hash = hashMessage(JSON.stringify(tx));
-    const signature = signTx(address, Hash);
+    const signature = await signTx(address, Hash);
+
+    console.log(signature);
 
     try {
       const {
@@ -51,7 +69,7 @@ function Transfer({ address, setBalance }) {
       } = await server.post(`send`, {
         tx,
         msgHash: toHex(Hash),
-        signature
+        signature,
       });
       setBalance(balance);
     } catch (ex) {
@@ -62,7 +80,9 @@ function Transfer({ address, setBalance }) {
   return (
     <form className="container transfer" onSubmit={transfer}>
       <h1>Send Transaction</h1>
-      <h4>Sender: {address.slice(0,5)}...{address.slice(14,20)}</h4>
+      <h4>
+        Sender: {address.slice(0, 5)}...{address.slice(14, 20)}
+      </h4>
       <label>
         Send Amount
         <input
