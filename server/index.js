@@ -4,6 +4,7 @@ const cors = require("cors");
 const port = 3042;
 const generateKey = require("./scripts/generate.cjs");
 const secp = require("ethereum-cryptography/secp256k1");
+const {toHex, utf8ToBytes} = require("ethereum-cryptography/utils");
 
 app.use(cors());
 app.use(express.json());
@@ -28,20 +29,28 @@ app.post("/send", (req, res) => {
   setInitialBalance(tx.sender);
   setInitialBalance(tx.recipient);
 
-  const [sign, recoveryBit] = Uint8Array.from(Object.values(signature));
+  if(signature === undefined) {
+    res.status(400).send({ message: "invalid signature" });
+  }
 
-  //let pubKey = secp.recoverPublicKey(msgHash, signature, 0);
-  //let addressFromPubKey = pubKey.slice(1).slice(-20);
-  console.log(req.body, sign, recoveryBit);
+  const [sign, recoveryBit] = signature;
+  signed = new Uint8Array(Object.values(sign))
+  const pubKey = toHex(secp.recoverPublicKey(msgHash, signed, recoveryBit));
+  const isVerfied = secp.verify(signed, msgHash, pubKey);
+
+  if (!isVerfied) {
+    res.status(400).send({ message: "signature verification failed" });
+  }
+
+  //console.log(pubKey);
   if (msgHash === undefined) {
     res.status(400).send({ message: "empty hash"});
   }
 
-  /*let addresses = Object.keys(balances);
-  for (let i=0; i<addresses.length; i++) {
-    if (addressFromPubKey.toString() === addresses[i].toString()) continue;
-    res.status(400).send({ message: "invalid sender address"});
-  }*/
+  if (tx.sender !== pubKey.slice(-20)) {
+    console.log(tx.sender, pubKey.slice(-20));
+    res.status(400).send({ message: "You can't send funds from this account"});
+  }
 
   if (balances[tx.sender] < tx.amount && tx.amount < 0) {
     res.status(400).send({ message: "Not enough funds! or Invalid amount" });
