@@ -1,7 +1,11 @@
 import { useState } from "react";
 import server from "./server";
+<<<<<<< HEAD
 //import util from "./util";
 import { toHex, utf8ToBytes, hexToBytes } from "ethereum-cryptography/utils";
+=======
+import {toHex, utf8ToBytes, hexToBytes} from "ethereum-cryptography/utils";
+>>>>>>> 790a637 (fix signature)
 import { keccak256 } from "ethereum-cryptography/keccak";
 import * as secp from "ethereum-cryptography/secp256k1";
 
@@ -16,10 +20,23 @@ function hashMessage(message) {
 }
 
 async function signTx(address, data) {
+<<<<<<< HEAD
   let signatures = [];
   for (let i = 0; i < privateKeys.length; i++) {
     // console.log(privateKeys[i].slice(1).slice(-20));
     let pubKey = secp.getPublicKey(privateKeys[i]);
+=======
+    for (let i=0; i<privateKeys.length; i++) {
+        let pubKey = secp.getPublicKey(privateKeys[i]).slice(1).slice(-20);
+        let addrFromPub = toHex(pubKey).slice(-20);
+    
+        if (address.toString() === addrFromPub) {
+          let signature = await secp.sign(toHex(data), hexToBytes(privateKeys[i]), {recovered: true})
+          return signature;
+        }
+    }
+}
+>>>>>>> 790a637 (fix signature)
 
     const pubKeySlice = toHex(pubKey).toString().substr(-20);
 
@@ -60,8 +77,11 @@ function Transfer({ address, setBalance }) {
 
     const Hash = hashMessage(JSON.stringify(tx));
     const signature = await signTx(address, Hash);
+<<<<<<< HEAD
 
     console.log(signature);
+=======
+>>>>>>> 790a637 (fix signature)
 
     try {
       const {
